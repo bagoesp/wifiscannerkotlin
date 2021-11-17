@@ -24,30 +24,21 @@ import java.util.jar.Manifest
 class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     companion object {
-        val LOG_TAG = "IkiLogBos"
-        val MY_REQUEST_CODE = 123
+        const val LOG_TAG = "IkiLogBos"
+        const val MY_REQUEST_CODE = 123
     }
 
     private lateinit var wifiManager: WifiManager
 
     private lateinit var buttonState: Button
     private lateinit var buttonScan: Button
-    private lateinit var listWifi: ListView
+    lateinit var listWifi: ListView
 
-    private lateinit var wifiReceiver: BroadcastReceiver
+    private lateinit var wifiReceiver: WifiBroadcastReceiver
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        // inisialisasikan object wifiManager
-        wifiManager = this.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-
-        // instansiasi wifi broadcast receiver
-        wifiReceiver = WifiBroadcastReceiver()
-
-        // register receiver nya
-        registerReceiver(wifiReceiver, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION))
 
         // view
         listWifi = findViewById(R.id.lv_wifi_devices)
@@ -56,6 +47,22 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
         buttonState.setOnClickListener(this)
         buttonScan.setOnClickListener(this)
+
+
+        // inisialisasikan object wifiManager
+        wifiManager = this.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+        // instansiasi wifi broadcast receiver
+        wifiReceiver = WifiBroadcastReceiver(wifiManager, listWifi)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Log.d(LOG_TAG, "onStart() register receiver")
+
+        // register receivernya
+        val filter = IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
+        registerReceiver(wifiReceiver, filter)
     }
 
     // method untuk menangani onClick
@@ -74,6 +81,32 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
             }
         }
+    }
+
+    // function untuk menampilkan state wifi device
+    private fun showWifiState(){
+        val state = wifiManager.wifiState
+        var statusInfo = "Unkown"
+
+        when (state) {
+            WifiManager.WIFI_STATE_DISABLING ->
+                statusInfo = "Disabling"
+
+            WifiManager.WIFI_STATE_DISABLED ->
+                statusInfo = "Disabled"
+
+            WifiManager.WIFI_STATE_ENABLING ->
+                statusInfo = "Enabling"
+
+            WifiManager.WIFI_STATE_ENABLED ->
+                statusInfo = "Enabled"
+
+            WifiManager.WIFI_STATE_UNKNOWN ->
+                statusInfo = "Unkown"
+
+            else -> statusInfo = "Unknown"
+        }
+        Toast.makeText(this, "Wifi Status: $statusInfo", Toast.LENGTH_SHORT).show()
     }
 
     // function untuk ask permission dan scanning wifi
@@ -101,8 +134,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         doStartScanWifi()
     }
 
-    // Funtion nggo nyecan wifi cuy
+    // Function nggo nyecan wifi cuy
     private fun doStartScanWifi() {
+        Log.d(LOG_TAG, "doStartScanWifi()")
         wifiManager.startScan()
     }
 
@@ -133,60 +167,5 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     override fun onStop() {
         unregisterReceiver(wifiReceiver)
         super.onStop()
-    }
-
-    // Define receiver class untuk menerima broadcast
-    inner class WifiBroadcastReceiver : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            Log.d(LOG_TAG, "onReceive()")
-
-            Toast.makeText(this@MainActivity, "Scan wis rampung bosque", Toast.LENGTH_SHORT).show()
-
-            val action = intent?.action
-            val ok = WifiManager.SCAN_RESULTS_AVAILABLE_ACTION == action
-
-            if (ok) {
-                Log.d(LOG_TAG, "Scan Rampung Bosque!")
-                val list: List<ScanResult> = wifiManager.scanResults
-                this@MainActivity.showNetworks(list)
-            } else {
-                Log.d(LOG_TAG, "Duh Scanne Gak Rampung Bosque!")
-            }
-        }
-    }
-
-    private fun showNetworks(list: List<ScanResult>){
-        // do something with list of wifi scan result
-        var deviceList: ArrayList<String> = arrayListOf()
-        for (wifi in list) {
-            deviceList.add("${wifi.SSID} - ${wifi.capabilities} - ${wifi.level} dB")
-        }
-        val arrayAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, deviceList.toArray())
-        listWifi.adapter = arrayAdapter
-    }
-
-    private fun showWifiState(){
-        val state = wifiManager.wifiState
-        var statusInfo = "Unkown"
-
-        when (state) {
-            WifiManager.WIFI_STATE_DISABLING ->
-                statusInfo = "Disabling"
-
-            WifiManager.WIFI_STATE_DISABLED ->
-                statusInfo = "Disabled"
-
-            WifiManager.WIFI_STATE_ENABLING ->
-                statusInfo = "Enabling"
-
-            WifiManager.WIFI_STATE_ENABLED ->
-                statusInfo = "Enabled"
-
-            WifiManager.WIFI_STATE_UNKNOWN ->
-                statusInfo = "Unkown"
-
-            else -> statusInfo = "Unknown"
-        }
-        Toast.makeText(this, "Wifi Status: $statusInfo", Toast.LENGTH_SHORT).show()
     }
 }
